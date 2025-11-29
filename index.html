@@ -1,1 +1,270 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Turnos - Centro Médico DR. Luis Quito</title>
 
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(120deg, #f4f8fb, #e9eef2);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      color: #1a1a1a;
+    }
+    .video-panel { flex: 2; background: #000; display:flex; justify-content:center; align-items:center; }
+    video { width:100%; height:100%; object-fit:cover; }
+
+    .turnos-panel {
+      flex: 1;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-left: 6px solid #d32f2f;
+    }
+    header {
+      text-align: center;
+      background: #d32f2f;
+      color: white;
+      padding: 20px 10px 40px 10px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      position: relative;
+    }
+    #sedeSelect {
+      position: absolute;
+      bottom: 5px;
+      right: 10px;
+      padding: 5px 8px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      border: none;
+      background: #ffffff;
+      color: #1a1a1a;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    main { flex-grow:1; padding:20px; overflow-y:auto; }
+    .paciente { background:#f5f5f5; border-radius:10px; margin-bottom:10px; padding:12px 16px; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+    .paciente.en-espera { border-left: 5px solid #f44336; }
+    .paciente.en-atencion { border-left: 5px solid #ff9800; }
+    .paciente.atendido { border-left: 5px solid #4caf50; }
+    .paciente.programado { border-left: 5px solid #0d47a1; }
+    .paciente strong { display:block; font-size:1.1rem; margin-bottom:4px; }
+    footer { background:#0d47a1; color:white; text-align:center; padding:10px; font-size:0.9rem; }
+    #ultimosLlamados { background:#f0f4f8; padding:10px; border-top:2px solid #ccc; }
+    button#llamarBtn { display:block; margin:0 auto 10px auto; background:#1976d2; color:white; padding:8px 18px; border:none; border-radius:6px; font-size:1rem; cursor:pointer; }
+    button#llamarBtn:hover { background:#0d47a1; }
+  </style>
+</head>
+<body>
+  <div class="video-panel">
+    <video id="videoPublicidad" autoplay muted loop>
+      <source src="video.mp4" type="video/mp4" />
+      Tu navegador no soporta video.
+    </video>
+  </div>
+
+  <div class="turnos-panel">
+    <header>
+      Centro Médico DR. Luis Quito
+      <select id="sedeSelect">
+        <option value="">Cargando sedes...</option>
+      </select>
+    </header>
+
+    <main id="listaPacientes">
+      <p style="text-align:center;">Cargando pacientes...</p>
+    </main>
+
+    <div id="ultimosLlamados">
+      <button id="llamarBtn">🔊 Llamar siguiente</button>
+      <div id="ultimos"></div>
+    </div>
+
+    <footer>© 2025 Centro Médico DR. Luis Quito</footer>
+  </div>
+
+  <audio id="sonidoTimbre" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import { ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const sedeSelect = document.getElementById("sedeSelect");
+    const listaPacientes = document.getElementById("listaPacientes");
+    const ultimosDiv = document.getElementById("ultimos");
+    const llamarBtn = document.getElementById("llamarBtn");
+    const sonido = document.getElementById("sonidoTimbre");
+    const videoPublicidad = document.getElementById("videoPublicidad");
+
+    let sedeSeleccionada = localStorage.getItem("sedeSeleccionada") || "";
+    let pacientes = []; // array de objetos { id, ...datos }
+    let sedes = {};
+
+    // --- Helpers ---
+    function normalizeEstado(text = "") {
+      return String(text)
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "-")
+        .trim();
+    }
+
+    function safeText(t) { return (t || "").toString(); }
+
+    // --- Sedes: OBSERVE la RUTA CORRECTA en la base: "estado-pacientes/sedes"
+    const sedesRef = ref(db, "estado-pacientes/sedes");
+    onValue(sedesRef, (snap) => {
+      try {
+        const val = snap.val();
+        console.log("[Firebase] sedes snapshot:", val);
+        sedes = val || {};
+        sedeSelect.innerHTML = "";
+        let hayActivas = false;
+        Object.keys(sedes).forEach((k) => {
+          const s = sedes[k];
+          if (s && s.activa) {
+            const opt = document.createElement("option");
+            opt.value = s.nombre;
+            opt.textContent = safeText(s.nombre).toUpperCase();
+            sedeSelect.appendChild(opt);
+            hayActivas = true;
+          }
+        });
+        if (!hayActivas) {
+          const opt = document.createElement("option");
+          opt.textContent = "Sin sedes activas";
+          sedeSelect.appendChild(opt);
+        }
+        if (sedeSeleccionada) {
+          sedeSelect.value = sedeSeleccionada;
+          actualizarVideo();
+        }
+      } catch (e) {
+        console.error("Error procesando sedes:", e);
+      }
+    }, (err) => {
+      console.error("Error leyendo sedes:", err);
+      sedeSelect.innerHTML = "<option>Error cargando sedes</option>";
+    });
+
+    sedeSelect.addEventListener("change", () => {
+      sedeSeleccionada = sedeSelect.value;
+      localStorage.setItem("sedeSeleccionada", sedeSeleccionada);
+      filtrarPacientes();
+      actualizarVideo();
+    });
+
+    function actualizarVideo() {
+      const sedeEncontrada = Object.values(sedes).find(s => s.nombre === sedeSeleccionada);
+      if (sedeEncontrada && sedeEncontrada.videoUrl) {
+        videoPublicidad.src = sedeEncontrada.videoUrl;
+        videoPublicidad.load();
+        videoPublicidad.play();
+      }
+    }
+
+    // --- Pacientes: OBSERVE la RUTA CORRECTA en la base: "estado-pacientes/pacientes"
+    const pacientesRef = ref(db, "estado-pacientes/pacientes");
+    onValue(pacientesRef, (snap) => {
+      try {
+        const val = snap.val();
+        console.log("[Firebase] pacientes snapshot:", val);
+
+        // Convertimos a array con id si existe
+        pacientes = [];
+        if (val) {
+          Object.keys(val).forEach((k) => {
+            const item = val[k];
+            item._id = k;
+            pacientes.push(item);
+          });
+        }
+        // opcional: ordenar por fecha/estado aquí si quieres
+        filtrarPacientes();
+      } catch (e) {
+        console.error("Error procesando pacientes:", e);
+      }
+    }, (err) => {
+      console.error("Error leyendo pacientes:", err);
+      listaPacientes.innerHTML = "<p style='text-align:center;color:red;'>Error cargando pacientes</p>";
+    });
+
+    function filtrarPacientes() {
+      if (!sedeSeleccionada) {
+        listaPacientes.innerHTML = "<p style='text-align:center;'>Seleccione una sede</p>";
+        return;
+      }
+      // filtramos por sede (comparamos texto tal cual)
+      const filtrados = pacientes.filter(p => safeText(p.sede) === safeText(sedeSeleccionada));
+      console.log("Pacientes filtrados para sede", sedeSeleccionada, filtrados);
+      mostrarPacientes(filtrados);
+    }
+
+    function mostrarPacientes(lista) {
+      listaPacientes.innerHTML = "";
+      if (!Array.isArray(lista) || lista.length === 0) {
+        listaPacientes.innerHTML = "<p style='text-align:center;'>No hay pacientes</p>";
+        return;
+      }
+
+      // Opcional: ordenar para mostrar En atención primero, luego En espera, luego Programado, luego Atendido
+      const order = { "en-atencion": 0, "en-espera": 1, "programado": 2, "atendido": 3 };
+      lista.sort((a,b) => {
+        const aKey = order[normalizeEstado(a.estado)] ?? 99;
+        const bKey = order[normalizeEstado(b.estado)] ?? 99;
+        if (aKey !== bKey) return aKey - bKey;
+        return 0;
+      });
+
+      lista.forEach(p => {
+        const div = document.createElement("div");
+
+        // Clase normalizada
+        const estadoClase = normalizeEstado(p.estado);
+        div.className = `paciente ${estadoClase}`;
+
+        div.innerHTML = `
+          <strong>${safeText(p.nombres)} ${safeText(p.apellidos)}</strong>
+          <div>${safeText(p.estudio)}</div>
+          <div style="font-size:0.85rem; color:#555">Estado: ${safeText(p.estado)}</div>
+        `;
+        listaPacientes.appendChild(div);
+      });
+    }
+
+    // --- Botón llamar: ahora busca el primer paciente 'en-espera' y lo anuncia (no modifica DB)
+    llamarBtn.addEventListener("click", () => {
+      if (!sedeSeleccionada) { alert("Seleccione una sede"); return; }
+
+      const candidatos = pacientes.filter(p => safeText(p.sede) === safeText(sedeSeleccionada));
+      const siguiente = candidatos.find(p => normalizeEstado(p.estado) === "en-espera");
+
+      console.log("Candidatos:", candidatos, "Siguiente:", siguiente);
+
+      if (siguiente) {
+        sonido.play();
+        const texto = `Siguiente turno: ${siguiente.nombres} ${siguiente.apellidos}, área de ${siguiente.estudio || "ecografía"}`;
+        const voz = new SpeechSynthesisUtterance(texto);
+        voz.lang = "es-PE";
+        speechSynthesis.speak(voz);
+
+        // Mostrar en últimos (no modificamos DB)
+        const now = new Date().toLocaleTimeString();
+        ultimosDiv.innerHTML = `<p><strong>${siguiente.nombres} ${siguiente.apellidos}</strong> - ${siguiente.estudio} <small style="color:#666">(${now})</small></p>` + ultimosDiv.innerHTML;
+      } else {
+        alert("No hay pacientes en espera para llamar.");
+      }
+    });
+
+    // --- Debug: indica que el script cargó
+    console.log("Turno-TV script cargado. Esperando datos de Firebase...");
+  </script>
+</body>
+  </html>
