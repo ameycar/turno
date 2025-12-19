@@ -121,5 +121,34 @@
   <audio id="sonido" src="https://actions.google.com/sounds/v1/bell/desk_bell.ogg"></audio>
 
   <script type="module" src="./app.js"></script>
+  <body>
+
+  <div class="pantalla">
+
+    <!-- VIDEO -->
+    <div id="video-container">
+      <iframe
+        id="videoFrame"
+        src=""
+        allow="autoplay; encrypted-media"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <!-- PANEL DE TURNOS -->
+    <div class="panel">
+      <div class="estado">En atención</div>
+      <div class="turno" id="turnoActual">
+        Esperando llamado...
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JS -->
+  <script type="module" src="./app.js"></script>
+
+</body>
+
 </body>
 </html>
