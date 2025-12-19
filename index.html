@@ -48,6 +48,63 @@
       display: none;
     }
   </style>
+  <head>
+  <meta charset="UTF-8">
+  <title>Turnos TV</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #0b0f1a;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    .pantalla {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* VIDEO */
+    #video-container {
+      width: 65%;
+      height: 100%;
+      background: black;
+    }
+
+    #videoFrame {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* PANEL DERECHO */
+    .panel {
+      width: 35%;
+      padding: 20px;
+      background: #111827;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .estado {
+      font-size: 28px;
+      opacity: 0.8;
+      margin-bottom: 15px;
+    }
+
+    .turno {
+      font-size: 48px;
+      font-weight: bold;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+
 </head>
 <body>
 
