@@ -1,27 +1,62 @@
 import { db } from "./firebase-config.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const sonido = new Audio("https://actions.google.com/sounds/v1/bell/desk_bell.ogg");
+// =======================
+// OBTENER SEDE DESDE URL
+// =======================
+const params = new URLSearchParams(window.location.search);
+const sedeKey = params.get("sede");
 
+if (!sedeKey) {
+  alert("ERROR: Falta ?sede=nombre_sede en la URL");
+  throw new Error("Sede no definida");
+}
+
+// =======================
+// ELEMENTOS
+// =======================
+const box = document.getElementById("turnoBox");
+const sinTurno = document.getElementById("sinTurno");
+const nombreEl = document.getElementById("nombre");
+const estudioEl = document.getElementById("estudio");
+const sedeEl = document.getElementById("sede");
+const sonido = document.getElementById("sonido");
+
+// =======================
+// VOZ
+// =======================
 function hablar(texto) {
   const msg = new SpeechSynthesisUtterance(texto);
-  msg.lang = "es-ES";
+  msg.lang = "es-PE";
   msg.rate = 0.9;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(msg);
 }
 
-const turnoRef = ref(db, "turnoActual_global");
+// =======================
+// ESCUCHAR TURNO POR SEDE
+// =======================
+const turnoRef = ref(db, `turnoActual/${sedeKey}`);
 
 onValue(turnoRef, (snapshot) => {
-  if (!snapshot.exists()) return;
+  const data = snapshot.val();
 
-  const d = snapshot.val();
+  // NO HAY TURNO
+  if (!data) {
+    box.classList.add("hidden");
+    sinTurno.classList.remove("hidden");
+    return;
+  }
 
-  document.getElementById("nombre").innerText = d.nombre;
-  document.getElementById("estudio").innerText = d.estudio;
-  document.getElementById("sede").innerText = d.sede;
+  // MOSTRAR TURNO
+  sedeEl.textContent = data.sede || sedeKey;
+  nombreEl.textContent = data.nombre || "";
+  estudioEl.textContent = data.estudio || "";
 
+  sinTurno.classList.add("hidden");
+  box.classList.remove("hidden");
+
+  // SONIDO + VOZ
   sonido.play();
-  hablar(`Siguiente turno. ${d.nombre}. Área de ecografía. Sede ${d.sede}`);
+  hablar(`Siguiente turno. ${data.nombre}. Área de ${data.estudio}`);
 });
