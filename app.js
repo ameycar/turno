@@ -1,40 +1,33 @@
 import { db } from "./firebase-config.js";
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// LEER SEDE DESDE URL
+// SEDE DESDE URL
 const params = new URLSearchParams(window.location.search);
 const sedeId = params.get("sede");
 
 if (!sedeId) {
-  alert("ERROR: Falta ?sede=ID_SEDE en la URL");
-  throw new Error("Sede no definida");
+  alert("ERROR: falta ?sede=ID_SEDE");
+  throw new Error("Sin sede");
 }
 
-// REFERENCIAS
+// ELEMENTOS
+const turnoBox = document.getElementById("turnoActual");
 const videoFrame = document.getElementById("videoFrame");
-const turnoTexto = document.getElementById("turnoActual");
 
-// CARGAR VIDEO DE LA SEDE
-const sedeRef = ref(db, `sedes/${sedeId}`);
-onValue(sedeRef, (snap) => {
-  if (!snap.exists()) return;
-
-  const data = snap.val();
-
-  if (data.videoUrl) {
-    videoFrame.src = data.videoUrl;
+// VIDEO DE LA SEDE
+onValue(ref(db, `sedes/${sedeId}/videoUrl`), (snap) => {
+  if (snap.exists()) {
+    videoFrame.src = snap.val();
   }
 });
 
-// TURNO ACTUAL POR SEDE
-const turnoRef = ref(db, `turnoActual/${sedeId}`);
-onValue(turnoRef, (snap) => {
+// TURNO ACTUAL DE LA SEDE
+onValue(ref(db, `turnoActual/${sedeId}`), (snap) => {
   if (!snap.exists()) {
-    turnoTexto.textContent = "Esperando llamado...";
+    turnoBox.textContent = "Esperando llamado...";
     return;
   }
 
   const t = snap.val();
-  turnoTexto.textContent = `${t.nombre} ${t.apellido}`;
+  turnoBox.textContent = `${t.nombre} ${t.apellido}`;
 });
-
