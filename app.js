@@ -29,5 +29,6 @@ onValue(ref(db, `turnoActual/${sedeId}`), (snap) => {
   }
 
   const t = snap.val();
-  turnoBox.textContent = `${t.nombre} ${t.apellido}`;
+  turnoBox.textContent = t.nombre;
+
 });
