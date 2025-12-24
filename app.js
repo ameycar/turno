@@ -86,4 +86,3 @@ function anunciar(p) {
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
-
