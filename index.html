@@ -80,7 +80,25 @@ video {
   border-radius: 6px;
   cursor: pointer;
 }
+   .scroll-box {
+  height: 160px;              /* visible */
+  overflow: hidden;
+  position: relative;
+}
+
+.scroll-content {
+  position: absolute;
+  width: 100%;
+  animation: scrollVertical 20s linear infinite;
+}
+
+@keyframes scrollVertical {
+  0%   { top: 100%; }
+  100% { top: -100%; }
+}
+
 </style>
+ 
 </head>
 
 <body>
