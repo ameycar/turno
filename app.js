@@ -86,3 +86,20 @@ function anunciar(p) {
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
+function hacerLlamado(p) {
+  if (!window.audioHabilitado) return;
+
+  const sonido = document.getElementById("sonido");
+  sonido.currentTime = 0;
+  sonido.play();
+
+  const texto = `Siguiente turno. ${p.nombres} ${p.apellidos}. Área de ecografía.`;
+  const voz = new SpeechSynthesisUtterance(texto);
+  voz.lang = "es-ES";
+  speechSynthesis.speak(voz);
+}
+
+function llamarOtraVez(paciente) {
+  hacerLlamado(paciente);
+}
+
