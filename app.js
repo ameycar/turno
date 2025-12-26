@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-/* CONFIG FIREBASE */
+/* 🔥 FIREBASE */
 const firebaseConfig = {
   apiKey: "TU_API_KEY",
   authDomain: "estado-pacientes.firebaseapp.com",
@@ -15,28 +15,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* SEDE POR URL */
+/* 🏥 SEDE */
 const params = new URLSearchParams(window.location.search);
 const SEDE = params.get("sede") || "Vitarte 1";
 document.getElementById("sedeTitulo").textContent = SEDE;
 
+/* 📋 LISTAS */
 const listaEspera = document.getElementById("listaEspera");
 const listaAtencion = document.getElementById("listaAtencion");
 const listaAtendidos = document.getElementById("listaAtendidos");
 
-/* CONTROL DE AUDIO */
+/* 🔊 AUDIO */
 let audioHabilitado = false;
+let llamadosRealizados = new Set();
 
-/* 🔒 REGISTRO DE PACIENTES YA LLAMADOS */
-const llamadosRealizados = new Set();
-
-/* ACTIVAR AUDIO (click del usuario) */
 window.activarAudio = () => {
   audioHabilitado = true;
   alert("🔊 Sonido activado");
 };
 
-/* ESCUCHAR FIREBASE */
+/* 📺 VIDEOS POR SEDE */
+const videosPorSede = {
+  "Vitarte 1": [
+    "videos/vitarte1/video1.mp4",
+    "videos/vitarte1/video2.mp4"
+  ],
+  "Vitarte 5": [],
+  "Vitarte 7": []
+};
+
+let indiceVideo = 0;
+const player = document.getElementById("videoPlayer");
+
+function iniciarVideos() {
+  const lista = videosPorSede[SEDE];
+  if (!lista || lista.length === 0) return;
+
+  player.src = lista[indiceVideo];
+  player.play();
+
+  player.onended = () => {
+    indiceVideo = (indiceVideo + 1) % lista.length;
+    player.src = lista[indiceVideo];
+    player.play();
+  };
+}
+
+iniciarVideos();
+
+/* 🔄 FIREBASE */
 onValue(ref(db, "pacientes"), snapshot => {
 
   listaEspera.innerHTML = "";
@@ -45,17 +72,11 @@ onValue(ref(db, "pacientes"), snapshot => {
 
   snapshot.forEach(child => {
     const p = child.val();
-    const id = child.key;
-
     if (p.sede !== SEDE) return;
 
     const div = document.createElement("div");
     div.classList.add("paciente");
-
-    div.innerHTML = `
-      <strong>${p.apellidos} ${p.nombres}</strong><br>
-      ${p.estudio || ""}
-    `;
+    div.innerHTML = `<strong>${p.apellidos} ${p.nombres}</strong><br>${p.estudio || ""}`;
 
     if (p.estado === "En espera") {
       div.classList.add("espera");
@@ -65,12 +86,7 @@ onValue(ref(db, "pacientes"), snapshot => {
     if (p.estado === "En atención") {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
-
-      // 🔔 SOLO LLAMA UNA VEZ POR PACIENTE
-      if (!llamadosRealizados.has(id)) {
-        anunciar(p);
-        llamadosRealizados.add(id);
-      }
+      anunciarUnaVez(p, child.key);
     }
 
     if (p.estado === "Atendido") {
@@ -80,29 +96,14 @@ onValue(ref(db, "pacientes"), snapshot => {
   });
 });
 
-/* 🔊 LLAMADO AUTOMÁTICO */
-function anunciar(p) {
+/* 🔔 LLAMADO SOLO UNA VEZ */
+function anunciarUnaVez(p, id) {
   if (!audioHabilitado) return;
+  if (llamadosRealizados.has(id)) return;
 
-  const timbre = new Audio(
-    "https://actions.google.com/sounds/v1/alarms/bank_bell.ogg"
-  );
-  timbre.play();
+  llamadosRealizados.add(id);
 
-  const voz = new SpeechSynthesisUtterance(
-    `Siguiente turno: ${p.apellidos} ${p.nombres}, área de ecografía`
-  );
-  voz.lang = "es-ES";
-  speechSynthesis.speak(voz);
-}
-
-/* 🔁 LLAMADO MANUAL (botón) */
-function hacerLlamado(p) {
-  if (!audioHabilitado) return;
-
-  const timbre = new Audio(
-    "https://actions.google.com/sounds/v1/alarms/bank_bell.ogg"
-  );
+  const timbre = new Audio("https://actions.google.com/sounds/v1/alarms/bank_bell.ogg");
   timbre.play();
 
   const voz = new SpeechSynthesisUtterance(
@@ -111,8 +112,4 @@ function hacerLlamado(p) {
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
-
-window.llamarOtraVez = (paciente) => {
-  hacerLlamado(paciente);
-};
 
