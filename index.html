@@ -18,7 +18,13 @@ body {
 
 .video {
   width: 70%;
-  background: #e0e0e0;
+  background: black;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .panel {
@@ -83,8 +89,12 @@ body {
 
 <div class="container">
 
-  <div class="video"></div>
+  <!-- VIDEO -->
+  <div class="video">
+    <video id="videoPlayer" autoplay muted></video>
+  </div>
 
+  <!-- PANEL -->
   <div class="panel">
     <div class="header">
       Centro Médico DR. Luis Quito<br>
@@ -111,3 +121,4 @@ body {
 <script type="module" src="./app.js"></script>
 </body>
 </html>
+
