@@ -112,4 +112,17 @@ function anunciarUnaVez(p, id) {
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
+function activarScrollSiEsNecesario(listaId) {
+  const lista = document.getElementById(listaId);
+  if (!lista) return;
+
+  const total = lista.children.length;
+
+  if (total > 7) {
+    lista.style.animationPlayState = "running";
+  } else {
+    lista.style.animationPlayState = "paused";
+    lista.style.top = "0";
+  }
+}
 
