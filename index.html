@@ -96,6 +96,31 @@ video {
   0%   { top: 100%; }
   100% { top: -100%; }
 }
+/* ===== LISTA EN ESPERA (QUIETA POR DEFECTO) ===== */
+#listaEspera {
+  max-height: 260px;       /* altura visible */
+  overflow: hidden;        /* CLAVE: no se mueve */
+  position: relative;
+}
+
+/* ===== SCROLL TIPO CRÉDITOS (SOLO CON 7+) ===== */
+#listaEspera.scroll-activo {
+  overflow: hidden;
+}
+
+#listaEspera.scroll-activo .paciente {
+  animation: subir 20s linear infinite;
+}
+
+/* Animación tipo créditos */
+@keyframes subir {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(-120%);
+  }
+}
 
 </style>
  
