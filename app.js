@@ -25,15 +25,34 @@ const listaAtencion = document.getElementById("listaAtencion");
 const listaAtendidos = document.getElementById("listaAtendidos");
 
 let audioHabilitado = false;
-
-/* 🔒 HISTORIAL DE ESTADOS */
-const estadoAnterior = {};
+let llamadosRealizados = new Set();
 
 /* ACTIVAR AUDIO */
 window.activarAudio = () => {
   audioHabilitado = true;
   alert("🔊 Sonido activado");
 };
+
+/* OBTENER ÁREA SEGÚN ESTUDIO */
+function obtenerArea(estudio) {
+  if (!estudio) return "atención médica";
+
+  let texto = "";
+
+  if (Array.isArray(estudio)) {
+    texto = estudio.join(" ").toLowerCase();
+  } else {
+    texto = estudio.toString().toLowerCase();
+  }
+
+  if (texto.includes("eco")) return "ecografía";
+  if (texto.includes("lab")) return "laboratorio";
+  if (texto.includes("rx") || texto.includes("rayos")) return "rayos x";
+  if (texto.includes("reso")) return "resonancia";
+  if (texto.includes("tomo")) return "tomografía";
+
+  return "atención médica";
+}
 
 /* FIREBASE */
 onValue(ref(db, "pacientes"), snapshot => {
@@ -42,71 +61,49 @@ onValue(ref(db, "pacientes"), snapshot => {
   listaAtencion.innerHTML = "";
   listaAtendidos.innerHTML = "";
 
-  let contadorEspera = 0;
-  let contadorAtencion = 0;
+  let espera = 0;
+  let atencion = 0;
 
   snapshot.forEach(child => {
     const p = child.val();
     if (p.sede !== SEDE) return;
 
-    const idPaciente = child.key;
-
     const div = document.createElement("div");
     div.classList.add("paciente");
-
     div.innerHTML = `<strong>${p.apellidos} ${p.nombres}</strong><br>${p.estudio || ""}`;
 
-    /* ESPERA */
     if (p.estado === "En espera") {
       div.classList.add("espera");
       listaEspera.appendChild(div);
-      contadorEspera++;
+      espera++;
     }
 
-    /* ATENCIÓN */
     if (p.estado === "En atención") {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
-      contadorAtencion++;
+      atencion++;
 
-      /* 🔊 SOLO SI CAMBIÓ A EN ATENCIÓN */
-      if (
-        audioHabilitado &&
-        estadoAnterior[idPaciente] !== "En atención"
-      ) {
+      const idLlamado = child.key;
+      if (!llamadosRealizados.has(idLlamado)) {
         anunciar(p);
+        llamadosRealizados.add(idLlamado);
       }
     }
 
-    /* ATENDIDO */
     if (p.estado === "Atendido") {
       div.classList.add("atendido");
       listaAtendidos.appendChild(div);
     }
-
-    /* GUARDAMOS ESTADO ACTUAL */
-    estadoAnterior[idPaciente] = p.estado;
   });
 
-  listaEspera.classList.toggle("scroll-activo", contadorEspera >= 7);
-  listaAtencion.classList.toggle("scroll-activo", contadorAtencion >= 7);
+  listaEspera.classList.toggle("scroll-activo", espera >= 7);
+  listaAtencion.classList.toggle("scroll-activo", atencion >= 7);
 });
 
-/* 🏥 DETERMINAR ÁREA */
-function obtenerArea(estudio = "") {
-  const e = estudio.toLowerCase();
-
-  if (e.includes("eco")) return "ecografía";
-  if (e.includes("rx") || e.includes("rayos")) return "rayos x";
-  if (e.includes("lab")) return "laboratorio";
-  if (e.includes("tomo")) return "tomografía";
-  if (e.includes("reson")) return "resonancia";
-
-  return "atención médica";
-}
-
-/* 🔊 LLAMADO */
+/* 🔊 ANUNCIO */
 function anunciar(p) {
+  if (!audioHabilitado) return;
+
   const area = obtenerArea(p.estudio);
 
   const timbre = new Audio("https://actions.google.com/sounds/v1/alarms/bank_bell.ogg");
@@ -118,3 +115,4 @@ function anunciar(p) {
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
+
