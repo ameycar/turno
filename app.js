@@ -25,7 +25,7 @@ const listaAtencion = document.getElementById("listaAtencion");
 const listaAtendidos = document.getElementById("listaAtendidos");
 
 let audioHabilitado = false;
-let llamadosRealizados = new Set();
+let ultimoLlamado = "";
 
 /* ACTIVAR AUDIO */
 window.activarAudio = () => {
@@ -33,21 +33,28 @@ window.activarAudio = () => {
   alert("🔊 Sonido activado");
 };
 
-/* OBTENER ÁREA SEGÚN ESTUDIO */
+/* ============================= */
+/* 🔎 DETECTAR ÁREA POR ESTUDIO  */
+/* ============================= */
 function obtenerArea(estudio) {
   if (!estudio) return "atención médica";
 
   let texto = "";
 
+  // Normalizar cualquier formato posible
   if (Array.isArray(estudio)) {
-    texto = estudio.join(" ").toLowerCase();
+    texto = estudio.join(" ");
+  } else if (typeof estudio === "object") {
+    texto = Object.values(estudio).join(" ");
   } else {
-    texto = estudio.toString().toLowerCase();
+    texto = estudio.toString();
   }
 
+  texto = texto.toLowerCase().trim();
+
   if (texto.includes("eco")) return "ecografía";
+  if (texto.includes("rx") || texto.includes("ray")) return "rayos x";
   if (texto.includes("lab")) return "laboratorio";
-  if (texto.includes("rx") || texto.includes("rayos")) return "rayos x";
   if (texto.includes("reso")) return "resonancia";
   if (texto.includes("tomo")) return "tomografía";
 
@@ -61,8 +68,7 @@ onValue(ref(db, "pacientes"), snapshot => {
   listaAtencion.innerHTML = "";
   listaAtendidos.innerHTML = "";
 
-  let espera = 0;
-  let atencion = 0;
+  let contadorEspera = 0;
 
   snapshot.forEach(child => {
     const p = child.val();
@@ -70,24 +76,26 @@ onValue(ref(db, "pacientes"), snapshot => {
 
     const div = document.createElement("div");
     div.classList.add("paciente");
-    div.innerHTML = `<strong>${p.apellidos} ${p.nombres}</strong><br>${p.estudio || ""}`;
+
+    const estudioTexto = Array.isArray(p.estudio)
+      ? p.estudio.join(", ")
+      : (typeof p.estudio === "object"
+          ? Object.values(p.estudio).join(", ")
+          : (p.estudio || "")
+        );
+
+    div.innerHTML = `<strong>${p.apellidos} ${p.nombres}</strong><br>${estudioTexto}`;
 
     if (p.estado === "En espera") {
       div.classList.add("espera");
       listaEspera.appendChild(div);
-      espera++;
+      contadorEspera++;
     }
 
     if (p.estado === "En atención") {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
-      atencion++;
-
-      const idLlamado = child.key;
-      if (!llamadosRealizados.has(idLlamado)) {
-        anunciar(p);
-        llamadosRealizados.add(idLlamado);
-      }
+      anunciar(p);
     }
 
     if (p.estado === "Atendido") {
@@ -96,12 +104,37 @@ onValue(ref(db, "pacientes"), snapshot => {
     }
   });
 
-  listaEspera.classList.toggle("scroll-activo", espera >= 7);
-  listaAtencion.classList.toggle("scroll-activo", atencion >= 7);
+  /* 🎬 SCROLL SOLO SI HAY 7 O MÁS EN ESPERA */
+  if (contadorEspera >= 7) {
+    listaEspera.classList.add("scroll-activo");
+  } else {
+    listaEspera.classList.remove("scroll-activo");
+  }
 });
 
-/* 🔊 ANUNCIO */
+/* 🔊 LLAMADO AUTOMÁTICO (UNA SOLA VEZ POR PACIENTE) */
 function anunciar(p) {
+  if (!audioHabilitado) return;
+
+  const actual = `${p.apellidos} ${p.nombres}`;
+  if (actual === ultimoLlamado) return;
+
+  ultimoLlamado = actual;
+
+  const area = obtenerArea(p.estudio);
+
+  const timbre = new Audio("https://actions.google.com/sounds/v1/alarms/bank_bell.ogg");
+  timbre.play();
+
+  const voz = new SpeechSynthesisUtterance(
+    `Siguiente turno: ${actual}, área de ${area}`
+  );
+  voz.lang = "es-ES";
+  speechSynthesis.speak(voz);
+}
+
+/* 🔁 LLAMAR MANUALMENTE (BOTÓN FUTURO) */
+function hacerLlamado(p) {
   if (!audioHabilitado) return;
 
   const area = obtenerArea(p.estudio);
@@ -110,8 +143,12 @@ function anunciar(p) {
   timbre.play();
 
   const voz = new SpeechSynthesisUtterance(
-    `Siguiente turno: ${p.apellidos} ${p.nombres}, área de ${area}`
+    `Siguiente turno: ${p.nombres} ${p.apellidos}, área de ${area}`
   );
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
+}
+
+function llamarOtraVez(paciente) {
+  hacerLlamado(paciente);
 }
