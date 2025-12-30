@@ -41,6 +41,7 @@ onValue(ref(db, "pacientes"), snapshot => {
   listaAtendidos.innerHTML = "";
 
   let contadorEspera = 0;
+  let contadorAtencion = 0;
 
   snapshot.forEach(child => {
     const p = child.val();
@@ -61,6 +62,7 @@ onValue(ref(db, "pacientes"), snapshot => {
     if (p.estado === "En atención") {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
+      contadorAtencion++;
       anunciar(p);
     }
 
@@ -70,18 +72,23 @@ onValue(ref(db, "pacientes"), snapshot => {
     }
   });
 
-  /* 🎬 REGLA DE LOS 7 (CONTROL REAL DEL SCROLL) */
+  /* 🎬 REGLA DE LOS 7 – EN ESPERA */
   if (contadorEspera >= 7) {
-    listaEspera.classList.add("scroll-activo");
     listaEspera.style.animation = "scrollVertical 20s linear infinite";
   } else {
-    listaEspera.classList.remove("scroll-activo");
     listaEspera.style.animation = "none";
+  }
+
+  /* 🎬 REGLA DE LOS 7 – EN ATENCIÓN */
+  if (contadorAtencion >= 7) {
+    listaAtencion.style.animation = "scrollVertical 20s linear infinite";
+  } else {
+    listaAtencion.style.animation = "none";
   }
 
 });
 
-/* 🔊 LLAMADO AUTOMÁTICO (SOLO UNA VEZ POR PACIENTE) */
+/* 🔊 LLAMADO AUTOMÁTICO (SOLO UNA VEZ) */
 function anunciar(p) {
   if (!audioHabilitado) return;
 
@@ -100,7 +107,7 @@ function anunciar(p) {
   speechSynthesis.speak(voz);
 }
 
-/* 🔁 LLAMADO MANUAL (FUTURO BOTÓN) */
+/* 🔁 LLAMADO MANUAL (FUTURO) */
 function hacerLlamado(p) {
   if (!window.audioHabilitado) return;
 
@@ -113,4 +120,5 @@ function hacerLlamado(p) {
 function llamarOtraVez(paciente) {
   hacerLlamado(paciente);
 }
+
 
