@@ -41,11 +41,17 @@ function obtenerArea(estudio) {
 
   let texto = "";
 
-  // Si viene como selección múltiple (array)
+  // ✅ SI VIENE COMO ARRAY
   if (Array.isArray(estudio)) {
     texto = estudio.join(" ").toLowerCase();
-  } 
-  // Si viene como texto simple
+  }
+
+  // ✅ SI VIENE COMO OBJETO (checkbox múltiple)
+  else if (typeof estudio === "object") {
+    texto = Object.keys(estudio).join(" ").toLowerCase();
+  }
+
+  // ✅ SI VIENE COMO TEXTO NORMAL
   else {
     texto = estudio.toString().toLowerCase();
   }
@@ -59,6 +65,7 @@ function obtenerArea(estudio) {
 
   return "atención médica";
 }
+
 
 /* ======================================================
    🔥 FIREBASE EN TIEMPO REAL
