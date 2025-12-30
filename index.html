@@ -80,50 +80,30 @@ video {
   border-radius: 6px;
   cursor: pointer;
 }
-   .scroll-box {
-  height: 160px;              /* visible */
+
+/* ===== LISTA QUIETA POR DEFECTO ===== */
+.scroll-box {
+  height: 260px;
   overflow: hidden;
   position: relative;
 }
 
 .scroll-content {
-  position: absolute;
-  width: 100%;
-  animation: scrollVertical 20s linear infinite;
-}
-
-@keyframes scrollVertical {
-  0%   { top: 100%; }
-  100% { top: -100%; }
-}
-/* ===== LISTA EN ESPERA (QUIETA POR DEFECTO) ===== */
-#listaEspera {
-  max-height: 260px;       /* altura visible */
-  overflow: hidden;        /* CLAVE: no se mueve */
   position: relative;
 }
 
-/* ===== SCROLL TIPO CRÉDITOS (SOLO CON 7+) ===== */
-#listaEspera.scroll-activo {
-  overflow: hidden;
-}
-
-#listaEspera.scroll-activo .paciente {
+/* ===== SCROLL SOLO CON 7 O MÁS ===== */
+.scroll-activo {
+  position: absolute;
+  width: 100%;
   animation: subir 20s linear infinite;
 }
 
-/* Animación tipo créditos */
 @keyframes subir {
-  0% {
-    transform: translateY(100%);
-  }
-  100% {
-    transform: translateY(-120%);
-  }
+  0% { top: 100%; }
+  100% { top: -120%; }
 }
-
 </style>
- 
 </head>
 
 <body>
@@ -132,12 +112,12 @@ video {
 
 <div class="container">
 
-  <!-- VIDEO -->
   <div class="video">
-    <video id="videoPlayer" autoplay muted></video>
+    <video autoplay muted loop>
+      <source src="video.mp4" type="video/mp4">
+    </video>
   </div>
 
-  <!-- PANEL -->
   <div class="panel">
     <div class="header">
       Centro Médico DR. Luis Quito<br>
@@ -147,28 +127,29 @@ video {
     <div class="section">
       <h3>🕒 En Espera</h3>
       <div class="scroll-box">
-  <div id="listaEspera" class="scroll-content"></div>
-</div>
-
+        <div id="listaEspera" class="scroll-content"></div>
+      </div>
     </div>
 
     <div class="section">
       <h3>🔔 En Atención</h3>
-     <div class="scroll-box">
-  <div id="listaAtencion" class="scroll-content"></div>
-</div>
+      <div class="scroll-box">
+        <div id="listaAtencion" class="scroll-content"></div>
+      </div>
     </div>
 
     <div class="footer">
       <h3>✔ Últimos Atendidos</h3>
       <div class="scroll-box">
-  <div id="listaAtendidos" class="scroll-content"></div>
-</div>
+        <div id="listaAtendidos" class="scroll-content"></div>
+      </div>
     </div>
   </div>
+
 </div>
 
 <script type="module" src="./app.js"></script>
 </body>
 </html>
+
 
