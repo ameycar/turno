@@ -71,6 +71,7 @@ onValue(ref(db, "pacientes"), snapshot => {
 
   let contadorEspera = 0;
   let contadorAtencion = 0;
+  let contadorAtendidos = 0;
 
   snapshot.forEach(child => {
     const p = child.val();
@@ -107,12 +108,14 @@ onValue(ref(db, "pacientes"), snapshot => {
     if (p.estado === "Atendido") {
       div.classList.add("atendido");
       listaAtendidos.appendChild(div);
+      contadorAtendidos++;
     }
   });
 
   /* 🎬 SCROLL SOLO CUANDO CORRESPONDE */
   listaEspera.classList.toggle("scroll-activo", contadorEspera >= 7);
   listaAtencion.classList.toggle("scroll-activo", contadorAtencion >= 7);
+  listaAtendidos.classList.toggle("scroll-activo", contadorAtendidos >= 3);
 });
 
 /* ======================================================
