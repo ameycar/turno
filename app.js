@@ -25,7 +25,9 @@ const listaAtencion = document.getElementById("listaAtencion");
 const listaAtendidos = document.getElementById("listaAtendidos");
 
 let audioHabilitado = false;
-let ultimoLlamado = "";
+
+/* 🔒 REGISTRO DE PACIENTES YA LLAMADOS */
+const llamadosRealizados = new Set();
 
 /* ACTIVAR AUDIO */
 window.activarAudio = () => {
@@ -47,6 +49,8 @@ onValue(ref(db, "pacientes"), snapshot => {
     const p = child.val();
     if (p.sede !== SEDE) return;
 
+    const idPaciente = `${p.sede}_${p.apellidos}_${p.nombres}`;
+
     const div = document.createElement("div");
     div.classList.add("paciente");
 
@@ -63,7 +67,12 @@ onValue(ref(db, "pacientes"), snapshot => {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
       contadorAtencion++;
-      anunciar(p);
+
+      /* 🔊 LLAMADO SOLO UNA VEZ POR PACIENTE */
+      if (audioHabilitado && !llamadosRealizados.has(idPaciente)) {
+        anunciar(p);
+        llamadosRealizados.add(idPaciente);
+      }
     }
 
     if (p.estado === "Atendido") {
@@ -72,53 +81,21 @@ onValue(ref(db, "pacientes"), snapshot => {
     }
   });
 
-  /* 🎬 REGLA DE LOS 7 – EN ESPERA */
-  if (contadorEspera >= 7) {
-    listaEspera.style.animation = "scrollVertical 20s linear infinite";
-  } else {
-    listaEspera.style.animation = "none";
-  }
+  /* 🎬 SCROLL SOLO SI HAY 7 O MÁS */
+  listaEspera.style.animation =
+    contadorEspera >= 7 ? "scrollVertical 20s linear infinite" : "none";
 
-  /* 🎬 REGLA DE LOS 7 – EN ATENCIÓN */
-  if (contadorAtencion >= 7) {
-    listaAtencion.style.animation = "scrollVertical 20s linear infinite";
-  } else {
-    listaAtencion.style.animation = "none";
-  }
-
+  listaAtencion.style.animation =
+    contadorAtencion >= 7 ? "scrollVertical 20s linear infinite" : "none";
 });
 
-/* 🔊 LLAMADO AUTOMÁTICO (SOLO UNA VEZ) */
+/* 🔊 FUNCIÓN DE VOZ */
 function anunciar(p) {
-  if (!audioHabilitado) return;
-
-  const actual = `${p.apellidos} ${p.nombres}`;
-  if (actual === ultimoLlamado) return;
-
-  ultimoLlamado = actual;
-
   const timbre = new Audio("https://actions.google.com/sounds/v1/alarms/bank_bell.ogg");
   timbre.play();
 
-  const voz = new SpeechSynthesisUtterance(
-    `Siguiente turno: ${actual}, área de ecografía`
-  );
-  voz.lang = "es-ES";
-  speechSynthesis.speak(voz);
-}
-
-/* 🔁 LLAMADO MANUAL (FUTURO) */
-function hacerLlamado(p) {
-  if (!window.audioHabilitado) return;
-
-  const texto = `Siguiente turno. ${p.nombres} ${p.apellidos}. Área de ecografía.`;
+  const texto = `Siguiente turno: ${p.apellidos} ${p.nombres}, área de ecografía`;
   const voz = new SpeechSynthesisUtterance(texto);
   voz.lang = "es-ES";
   speechSynthesis.speak(voz);
 }
-
-function llamarOtraVez(paciente) {
-  hacerLlamado(paciente);
-}
-
-
