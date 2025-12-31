@@ -36,34 +36,20 @@ window.activarAudio = () => {
 /* ======================================================
    🔎 OBTENER ÁREA SEGÚN ESTUDIO (FUNCIÓN DEFINITIVA)
    ====================================================== */
-function obtenerArea(estudio) {
-  if (!estudio) return "atención médica";
-
-  let texto = "";
-
-  // ✅ SI VIENE COMO ARRAY
-  if (Array.isArray(estudio)) {
-    texto = estudio.join(" ").toLowerCase();
+function detectarArea(estudios) {
+  if (!estudios || typeof estudios !== "object") {
+    return "Área de Atención Médica";
   }
 
-  // ✅ SI VIENE COMO OBJETO (checkbox múltiple)
-  else if (typeof estudio === "object") {
-    texto = Object.keys(estudio).join(" ").toLowerCase();
-  }
+  const lista = Object.keys(estudios).join(" ").toLowerCase();
 
-  // ✅ SI VIENE COMO TEXTO NORMAL
-  else {
-    texto = estudio.toString().toLowerCase();
-  }
+  if (lista.includes("eco")) return "Área de Ecografía";
+  if (lista.includes("lab")) return "Área de Laboratorio";
+  if (lista.includes("rx") || lista.includes("rayo")) return "Área de Rayos X";
+  if (lista.includes("tomo")) return "Área de Tomografía";
+  if (lista.includes("reso")) return "Área de Resonancia";
 
-  // 🔍 detección por letras clave
-  if (texto.includes("eco")) return "ecografía";
-  if (texto.includes("lab")) return "laboratorio";
-  if (texto.includes("rx") || texto.includes("rayos")) return "rayos x";
-  if (texto.includes("reso")) return "resonancia";
-  if (texto.includes("tomo")) return "tomografía";
-
-  return "atención médica";
+  return "Área de Atención Médica";
 }
 
 
