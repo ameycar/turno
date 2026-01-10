@@ -1,5 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  onChildChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* CONFIG FIREBASE */
 const firebaseConfig = {
@@ -21,50 +26,52 @@ const SEDE = params.get("sede") || "Vitarte 1";
 document.getElementById("sedeTitulo").textContent = SEDE;
 
 const listaEspera = document.getElementById("listaEspera");
-const listaAtencion = document.getElementById("listaAtencion");
+const listaAtencion = document.getElementById("listaAtendidos"); // opcional
 const listaAtendidos = document.getElementById("listaAtendidos");
 
 let audioHabilitado = false;
 let llamadosRealizados = new Set();
 
-/* ACTIVAR AUDIO */
+/* ACTIVAR AUDIO (OBLIGATORIO PARA NAVEGADOR) */
 window.activarAudio = () => {
   audioHabilitado = true;
   alert("🔊 Sonido activado");
 };
 
 /* ======================================================
-   🔎 OBTENER ÁREA SEGÚN ESTUDIO (FUNCIÓN DEFINITIVA)
+   🔎 DETECTAR ÁREA SEGÚN ESTUDIO (OBJETO O ARRAY)
    ====================================================== */
 function detectarArea(estudios) {
-  if (!estudios || typeof estudios !== "object") {
-    return "Área de Atención Médica";
+  if (!estudios) return "Atención médica";
+
+  let texto = "";
+
+  if (Array.isArray(estudios)) {
+    texto = estudios.join(" ").toLowerCase();
+  } else if (typeof estudios === "object") {
+    texto = Object.keys(estudios).join(" ").toLowerCase();
+  } else {
+    texto = estudios.toString().toLowerCase();
   }
 
-  const lista = Object.keys(estudios).join(" ").toLowerCase();
+  if (texto.includes("eco")) return "ecografía";
+  if (texto.includes("lab")) return "laboratorio";
+  if (texto.includes("rx") || texto.includes("rayo")) return "rayos X";
+  if (texto.includes("tomo")) return "tomografía";
+  if (texto.includes("reso")) return "resonancia";
 
-  if (lista.includes("eco")) return "Área de Ecografía";
-  if (lista.includes("lab")) return "Área de Laboratorio";
-  if (lista.includes("rx") || lista.includes("rayo")) return "Área de Rayos X";
-  if (lista.includes("tomo")) return "Área de Tomografía";
-  if (lista.includes("reso")) return "Área de Resonancia";
-
-  return "Área de Atención Médica";
+  return "atención médica";
 }
 
-
 /* ======================================================
-   🔥 FIREBASE EN TIEMPO REAL
+   📡 LISTADO EN TIEMPO REAL (VISUAL)
    ====================================================== */
 onValue(ref(db, "pacientes"), snapshot => {
-
   listaEspera.innerHTML = "";
-  listaAtencion.innerHTML = "";
   listaAtendidos.innerHTML = "";
 
-  let contadorEspera = 0;
-  let contadorAtencion = 0;
-  let contadorAtendidos = 0;
+  let espera = 0;
+  let atendidos = 0;
 
   snapshot.forEach(child => {
     const p = child.val();
@@ -74,59 +81,60 @@ onValue(ref(db, "pacientes"), snapshot => {
     div.classList.add("paciente");
     div.innerHTML = `
       <strong>${p.apellidos} ${p.nombres}</strong><br>
-      ${p.estudio || ""}
+      ${JSON.stringify(p.estudio ?? "")}
     `;
 
-    /* ===== EN ESPERA ===== */
     if (p.estado === "En espera") {
       div.classList.add("espera");
       listaEspera.appendChild(div);
-      contadorEspera++;
+      espera++;
     }
 
-    /* ===== EN ATENCIÓN ===== */
-    if (p.estado === "En atención") {
-      div.classList.add("atencion");
-      listaAtencion.appendChild(div);
-      contadorAtencion++;
-
-      const idLlamado = child.key;
-      if (!llamadosRealizados.has(idLlamado)) {
-        anunciar(p);
-        llamadosRealizados.add(idLlamado);
-      }
-    }
-
-    /* ===== ATENDIDO ===== */
     if (p.estado === "Atendido") {
       div.classList.add("atendido");
       listaAtendidos.appendChild(div);
-      contadorAtendidos++;
+      atendidos++;
     }
   });
 
-  /* 🎬 SCROLL SOLO CUANDO CORRESPONDE */
-  listaEspera.classList.toggle("scroll-activo", contadorEspera >= 7);
-  listaAtencion.classList.toggle("scroll-activo", contadorAtencion >= 7);
-  listaAtendidos.classList.toggle("scroll-activo", contadorAtendidos >= 3);
+  listaEspera.classList.toggle("scroll-activo", espera >= 7);
+  listaAtendidos.classList.toggle("scroll-activo", atendidos >= 3);
 });
 
 /* ======================================================
-   🔊 LLAMADO POR VOZ (UNA SOLA VEZ POR PACIENTE)
+   🔊 LLAMADO EXACTO CUANDO PASA A ATENDIDO
    ====================================================== */
-function anunciar(p) {
+onChildChanged(ref(db, "pacientes"), snapshot => {
+  const p = snapshot.val();
+  const id = snapshot.key;
+
+  if (!p || p.sede !== SEDE) return;
+  if (p.estado !== "Atendido") return;
+  if (llamadosRealizados.has(id)) return;
   if (!audioHabilitado) return;
 
-  const area = obtenerArea(p.estudio);
+  llamadosRealizados.add(id);
+  anunciar(p);
+});
+
+/* ======================================================
+   🔔 SONIDO + VOZ
+   ====================================================== */
+function anunciar(p) {
+  const area = detectarArea(p.estudio);
 
   const timbre = new Audio(
     "https://actions.google.com/sounds/v1/alarms/bank_bell.ogg"
   );
+  timbre.currentTime = 0;
   timbre.play();
 
   const voz = new SpeechSynthesisUtterance(
     `Siguiente turno: ${p.apellidos} ${p.nombres}, área de ${area}`
   );
   voz.lang = "es-ES";
+  voz.rate = 0.9;
+
+  speechSynthesis.cancel();
   speechSynthesis.speak(voz);
 }
