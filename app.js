@@ -43,26 +43,17 @@ window.activarAudio = () => {
   speechSynthesis.cancel();
 };
 
-/* ======================================================
-   🔎 OBTENER ÁREA SEGÚN ESTUDIOS (FIX DEFINITIVO)
-   👉 NO SE QUITA NADA, SOLO SE AÑADE ESTE SOPORTE
-   ====================================================== */
-function obtenerArea(estudio) {
-  if (!estudio) return "atención médica";
+/* 🔎 OBTENER ÁREA — USANDO estudios (PLURAL) */
+function obtenerArea(estudios) {
+  if (!estudios) return "atención médica";
 
   let texto = "";
 
-  // ✅ CASO REAL DESDE FIREBASE (OBJETO)
-  if (typeof estudio === "object" && !Array.isArray(estudio)) {
-    texto = Object.values(estudio).join(" ").toLowerCase();
-  }
-  // array (por si en el futuro cambia)
-  else if (Array.isArray(estudio)) {
-    texto = estudio.join(" ").toLowerCase();
-  }
-  // texto simple
-  else {
-    texto = estudio.toString().toLowerCase();
+  // 🔑 ESTUDIOS VIENE COMO OBJETO
+  if (typeof estudios === "object") {
+    texto = Object.values(estudios).join(" ").toLowerCase();
+  } else {
+    texto = estudios.toString().toLowerCase();
   }
 
   if (texto.includes("eco")) return "ecografía";
@@ -91,7 +82,7 @@ onValue(ref(db, "pacientes"), snapshot => {
     div.classList.add("paciente");
     div.innerHTML = `
       <strong>${p.apellidos} ${p.nombres}</strong><br>
-      ${p.estudio ? Object.values(p.estudio).join(", ") : ""}
+      ${p.estudios ? Object.values(p.estudios).join(", ") : ""}
     `;
 
     if (p.estado === "En espera") {
@@ -127,7 +118,8 @@ onValue(ref(db, "pacientes"), snapshot => {
 function anunciar(p) {
   if (!audioHabilitado) return;
 
-  const area = obtenerArea(p.estudio);
+  // ✅ AQUÍ ESTÁ LA CLAVE
+  const area = obtenerArea(p.estudios);
 
   const timbre = new Audio(
     "https://actions.google.com/sounds/v1/alarms/bank_bell.ogg"
