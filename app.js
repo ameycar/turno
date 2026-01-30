@@ -27,7 +27,7 @@ const listaAtendidos = document.getElementById("listaAtendidos");
 let audioHabilitado = false;
 const llamadosRealizados = new Set();
 
-/* 🔓 ACTIVAR AUDIO (OBLIGATORIO) */
+/* 🔓 ACTIVAR AUDIO */
 window.activarAudio = () => {
   audioHabilitado = true;
 
@@ -43,15 +43,25 @@ window.activarAudio = () => {
   speechSynthesis.cancel();
 };
 
-/* 🔎 DETECTAR ÁREA */
+/* ======================================================
+   🔎 OBTENER ÁREA SEGÚN ESTUDIOS (FIX DEFINITIVO)
+   👉 NO SE QUITA NADA, SOLO SE AÑADE ESTE SOPORTE
+   ====================================================== */
 function obtenerArea(estudio) {
   if (!estudio) return "atención médica";
 
   let texto = "";
 
-  if (Array.isArray(estudio)) {
+  // ✅ CASO REAL DESDE FIREBASE (OBJETO)
+  if (typeof estudio === "object" && !Array.isArray(estudio)) {
+    texto = Object.values(estudio).join(" ").toLowerCase();
+  }
+  // array (por si en el futuro cambia)
+  else if (Array.isArray(estudio)) {
     texto = estudio.join(" ").toLowerCase();
-  } else {
+  }
+  // texto simple
+  else {
     texto = estudio.toString().toLowerCase();
   }
 
@@ -79,7 +89,10 @@ onValue(ref(db, "pacientes"), snapshot => {
 
     const div = document.createElement("div");
     div.classList.add("paciente");
-    div.innerHTML = `<strong>${p.apellidos} ${p.nombres}</strong><br>${p.estudio || ""}`;
+    div.innerHTML = `
+      <strong>${p.apellidos} ${p.nombres}</strong><br>
+      ${p.estudio ? Object.values(p.estudio).join(", ") : ""}
+    `;
 
     if (p.estado === "En espera") {
       div.classList.add("espera");
@@ -116,7 +129,9 @@ function anunciar(p) {
 
   const area = obtenerArea(p.estudio);
 
-  const timbre = new Audio("https://actions.google.com/sounds/v1/alarms/bank_bell.ogg");
+  const timbre = new Audio(
+    "https://actions.google.com/sounds/v1/alarms/bank_bell.ogg"
+  );
   timbre.play();
 
   const voz = new SpeechSynthesisUtterance(
