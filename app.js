@@ -20,6 +20,7 @@ const params = new URLSearchParams(window.location.search);
 const SEDE = params.get("sede") || "Vitarte 1";
 document.getElementById("sedeTitulo").textContent = SEDE;
 
+/* LISTAS */
 const listaEspera = document.getElementById("listaEspera");
 const listaAtencion = document.getElementById("listaAtencion");
 const listaAtendidos = document.getElementById("listaAtendidos");
@@ -27,7 +28,7 @@ const listaAtendidos = document.getElementById("listaAtendidos");
 let audioHabilitado = false;
 const llamadosRealizados = new Set();
 
-/* 🔓 ACTIVAR AUDIO */
+/* 🔓 ACTIVAR AUDIO (OBLIGATORIO POR EL NAVEGADOR) */
 window.activarAudio = () => {
   audioHabilitado = true;
 
@@ -43,29 +44,30 @@ window.activarAudio = () => {
   speechSynthesis.cancel();
 };
 
-/* 🔎 OBTENER ÁREA — USANDO estudios (PLURAL) */
+/* ======================================================
+   🔎 OBTENER ÁREA SEGÚN ESTUDIOS (FIX DEFINITIVO REAL)
+   🔥 LEE LAS CLAVES DE FIREBASE (NO LOS VALUES)
+   ====================================================== */
 function obtenerArea(estudios) {
-  if (!estudios) return "atención médica";
-
-  let texto = "";
-
-  // 🔑 ESTUDIOS VIENE COMO OBJETO
-  if (typeof estudios === "object") {
-    texto = Object.values(estudios).join(" ").toLowerCase();
-  } else {
-    texto = estudios.toString().toLowerCase();
+  if (!estudios || typeof estudios !== "object") {
+    return "atención médica";
   }
+
+  // 🔑 Firebase guarda los estudios como claves con true
+  const texto = Object.keys(estudios).join(" ").toLowerCase();
 
   if (texto.includes("eco")) return "ecografía";
   if (texto.includes("lab")) return "laboratorio";
-  if (texto.includes("rx") || texto.includes("rayos")) return "rayos x";
-  if (texto.includes("reso")) return "resonancia";
-  if (texto.includes("tomo")) return "tomografía";
+  if (texto.includes("rx")) return "rayos x";
+  if (texto.includes("rm") || texto.includes("reso")) return "resonancia";
+  if (texto.includes("tem") || texto.includes("tomo")) return "tomografía";
 
   return "atención médica";
 }
 
-/* 🔥 FIREBASE */
+/* ======================================================
+   🔥 FIREBASE TIEMPO REAL
+   ====================================================== */
 onValue(ref(db, "pacientes"), snapshot => {
 
   listaEspera.innerHTML = "";
@@ -80,17 +82,24 @@ onValue(ref(db, "pacientes"), snapshot => {
 
     const div = document.createElement("div");
     div.classList.add("paciente");
+
+    const estudiosTexto = p.estudios
+      ? Object.keys(p.estudios).join(", ")
+      : "";
+
     div.innerHTML = `
       <strong>${p.apellidos} ${p.nombres}</strong><br>
-      ${p.estudios ? Object.values(p.estudios).join(", ") : ""}
+      ${estudiosTexto}
     `;
 
+    /* ===== EN ESPERA ===== */
     if (p.estado === "En espera") {
       div.classList.add("espera");
       listaEspera.appendChild(div);
       e++;
     }
 
+    /* ===== EN ATENCIÓN (LLAMADO AQUÍ) ===== */
     if (p.estado === "En atención") {
       div.classList.add("atencion");
       listaAtencion.appendChild(div);
@@ -102,6 +111,7 @@ onValue(ref(db, "pacientes"), snapshot => {
       }
     }
 
+    /* ===== ATENDIDO ===== */
     if (p.estado === "Atendido") {
       div.classList.add("atendido");
       listaAtendidos.appendChild(div);
@@ -109,16 +119,18 @@ onValue(ref(db, "pacientes"), snapshot => {
     }
   });
 
+  /* 🎬 SCROLL */
   listaEspera.classList.toggle("scroll-activo", e >= 7);
   listaAtencion.classList.toggle("scroll-activo", a >= 7);
   listaAtendidos.classList.toggle("scroll-activo", at >= 3);
 });
 
-/* 🔊 LLAMADO */
+/* ======================================================
+   🔊 LLAMADO POR VOZ + TIMBRE
+   ====================================================== */
 function anunciar(p) {
   if (!audioHabilitado) return;
 
-  // ✅ AQUÍ ESTÁ LA CLAVE
   const area = obtenerArea(p.estudios);
 
   const timbre = new Audio(
@@ -132,3 +144,4 @@ function anunciar(p) {
   voz.lang = "es-PE";
   speechSynthesis.speak(voz);
 }
+
